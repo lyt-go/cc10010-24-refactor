@@ -1,8 +1,13 @@
-"""依赖解析业务规则：状态流转、字段校验与筛选口径都收在这里。"""
+"""依赖解析业务规则：状态流转、字段校验与筛选口径都收在这里。
+
+表身份解析统一委托给血缘目录（``metadata_catalog``），不再各自按字符串猜测表名，
+保证依赖解析与 SQL 模板读取到的是同一规范表身份与字段结构。
+"""
 from __future__ import annotations
 
 from typing import Any
 
+from app.services.lineage import metadata_catalog
 from app.store import store
 
 MODULE = "dependency"
@@ -59,3 +64,39 @@ class DependencyService:
         entry["pending"] = target != STATUS_ORDER[-1]
         entry["abnormal"] = action in NEGATIVE_ACTIONS
         return entry, f"依赖关系已{action}"
+
+    def resolve_identity(self, entry_id: int) -> dict[str, Any] | None:
+        """把一条依赖的上游/下游引用解析到统一规范表身份（不改写原始字段）。"""
+        entry = store.find(MODULE, entry_id)
+        if entry is None:
+            return None
+        result: dict[str, Any] = {
+            "关系编号": entry.get("关系编号"),
+            "catalog_version": metadata_catalog.catalog_version(),
+            "端点": [],
+        }
+        for role, key in (("上游", "上游作业"), ("下游", "下游作业")):
+            raw = entry.get(key)
+            identity = metadata_catalog.resolve_table(raw)
+            result["端点"].append(
+                {
+                    "角色": role,
+                    "引用名": raw,
+                    "已解析": identity is not None,
+                    "表身份": identity.to_dict() if identity else None,
+                }
+            )
+        return result
+
+    def lineage_overview(self) -> dict[str, Any]:
+        """全量依赖引用按规范表身份归并的结果，供与 SQL 模板侧交叉核对。"""
+        references = metadata_catalog.dependency_references()
+        return {
+            "module": "dependency",
+            "catalog_version": metadata_catalog.catalog_version(),
+            "total": len(references),
+            "items": [
+                {"规范表名": canonical, "引用": refs}
+                for canonical, refs in sorted(references.items())
+            ],
+        }

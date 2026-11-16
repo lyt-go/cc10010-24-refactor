@@ -63,3 +63,19 @@ def export_entries() -> dict[str, Any]:
     """导出元数据存储清单：返回当前过滤条件下的全量数据。"""
     items, total = service.list_entries(page=1, size=10000)
     return {"module": "metastore", "total": total, "items": items}
+
+
+@router.get("/{entry_id}/bindability")
+def get_bindability(entry_id: int) -> dict[str, Any]:
+    """可绑定判断：分区字段、主键字段、所属数仓层与模板输出列是否都已确认，
+    并给出与元数据记录、表结构一致性同源的规范快照定位信息。"""
+    result = service.bindability(entry_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"元数据表 {entry_id} 不存在或已归档")
+    return result
+
+
+@router.get("/writebacks/manifest")
+def get_writeback_manifest() -> dict[str, Any]:
+    """元数据存储处理后的状态回写 SQL 模板清单。"""
+    return service.writeback_manifest()

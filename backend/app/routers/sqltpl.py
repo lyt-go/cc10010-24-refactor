@@ -63,3 +63,12 @@ def export_entries() -> dict[str, Any]:
     """导出SQL模板清单：返回当前过滤条件下的全量数据。"""
     items, total = service.list_entries(page=1, size=10000)
     return {"module": "sqltpl", "total": total, "items": items}
+
+
+@router.get("/{entry_id}/output-check")
+def check_output_columns(entry_id: int) -> dict[str, Any]:
+    """加载统一数据表字段血缘快照后校验模板输出列，表身份与依赖侧同源。"""
+    result = service.validate_output_columns(entry_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"模板定义 {entry_id} 不存在或已归档")
+    return result

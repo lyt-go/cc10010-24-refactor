@@ -63,3 +63,18 @@ def export_entries() -> dict[str, Any]:
     """导出依赖解析清单：返回当前过滤条件下的全量数据。"""
     items, total = service.list_entries(page=1, size=10000)
     return {"module": "dependency", "total": total, "items": items}
+
+
+@router.get("/lineage/overview")
+def lineage_overview() -> dict[str, Any]:
+    """依赖引用按统一规范表身份归并的结果，用于和 SQL 模板侧交叉核对。"""
+    return service.lineage_overview()
+
+
+@router.get("/{entry_id}/identity")
+def resolve_identity(entry_id: int) -> dict[str, Any]:
+    """把单条依赖的上游/下游引用解析到统一规范表身份，原始字段保持不变。"""
+    result = service.resolve_identity(entry_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"依赖关系 {entry_id} 不存在或已归档")
+    return result

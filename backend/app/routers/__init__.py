@@ -23,5 +23,6 @@ from app.routers import backuprestore as router_backuprestore
 from app.routers import logarchive as router_logarchive
 from app.routers import notifychan as router_notifychan
 from app.routers import publishplan as router_publishplan
+from app.routers import lineage as router_lineage
 
-ROUTERS = [router_etljob, router_dag, router_dependency, router_sourcecheck, router_runtime, router_rerun, router_baseline, router_partitioncheck, router_comparator, router_metastore, router_resource, router_slavalidate, router_sqltpl, router_backuprestore, router_logarchive, router_notifychan, router_publishplan]
+ROUTERS = [router_etljob, router_dag, router_dependency, router_sourcecheck, router_runtime, router_rerun, router_baseline, router_partitioncheck, router_comparator, router_metastore, router_resource, router_slavalidate, router_sqltpl, router_backuprestore, router_logarchive, router_notifychan, router_publishplan, router_lineage]

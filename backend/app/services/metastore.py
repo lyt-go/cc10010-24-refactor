@@ -1,8 +1,13 @@
-"""元数据存储业务规则：状态流转、字段校验与筛选口径都收在这里。"""
+"""元数据存储业务规则：状态流转、字段校验与筛选口径都收在这里。
+
+确认动作不再直接改状态，而是交给统一血缘目录做可绑定门禁：分区字段、主键字段、
+所属数仓层和模板输出列全部确认后才能置为「已确认」，并把状态回写 SQL 模板清单。
+"""
 from __future__ import annotations
 
 from typing import Any
 
+from app.services.lineage import metadata_catalog
 from app.store import store
 
 MODULE = "metastore"
@@ -55,7 +60,18 @@ class MetastoreService:
         target = ACTION_RULES[action]
         if target not in STATUS_ORDER:
             return None, f"目标状态「{target}」不在允许的状态序列里"
+        # 确认元数据走统一血缘目录的可绑定门禁，并由目录完成 SQL 模板状态回写。
+        if action == "确认元数据":
+            return metadata_catalog.confirm_metadata(entry_id)
         entry["status"] = target
         entry["pending"] = target != STATUS_ORDER[-1]
         entry["abnormal"] = action in NEGATIVE_ACTIONS
         return entry, f"元数据表已{action}"
+
+    def bindability(self, entry_id: int) -> dict[str, Any] | None:
+        """读取单表的可绑定判断与一致性来源，定位到同一份规范快照。"""
+        return metadata_catalog.bindability(entry_id)
+
+    def writeback_manifest(self) -> dict[str, Any]:
+        """元数据确认后的状态回写 SQL 模板清单。"""
+        return metadata_catalog.template_writeback_manifest()
